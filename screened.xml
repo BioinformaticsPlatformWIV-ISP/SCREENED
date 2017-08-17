@@ -1,0 +1,233 @@
+<tool id="screened" name="SCREENED" version="1.0">
+
+	<description>polymeraSe Chain Reaction Evaluation through largE-scale miNing of gEnomic Data </description>
+	
+	<command>
+        
+        $__tool_directory__/screened.sh
+
+	-ref $refGenomes
+	-config $config
+	-method $method
+	-out_detail $out_detail
+	-out_summary $out_summary
+	-out_cluster $out_cluster
+		
+	#if $advanced_options.selector:
+        	-cluster $advanced_options.cluster
+        	-deg $advanced_options.deg
+        	-ext_am $advanced_options.ext_am
+        	-ext_frag $advanced_options.ext_frag
+        	-mismatch $advanced_options.mismatch
+        	-length $advanced_options.alnLength
+        	-end $advanced_options.end
+		-bases $advanced_options.bases
+	#else:
+		-cluster no
+		-deg yes
+		-ext_am yes
+		-ext_frag yes
+		-mismatch 20
+		-length 80
+		-end 5	
+		-bases 1
+	#end if
+
+	</command>
+
+	<inputs>
+
+		<param name="refGenomes" type = "data" format="fasta" label = "Input fasta file?"/>
+		<param name="config" type = "data" format="tabular" label = "Config file?"/>
+                <param name="method" type = "text" format="txt" label = "Method to evaluate?"/>
+	  	          	
+		<conditional name="advanced_options">
+			<param name="selector" type="boolean" checked="false" label="Set advanced options?" />
+			<when value="true">
+				<param name="cluster" type="select" label="Clustering to perform?">
+               				<option value="no">No clustering</option>
+              				<option value="greedy">Greedy</option>
+               				<option value="exhaustive">Exhaustive</option>
+       		  		</param>
+             			<param name="deg" type="select" label="Consider degenerate fragment sequences?">
+                      			<option value="yes">Yes</option>
+                      			<option value="no">No</option>
+               			</param>
+               			<param name="ext_am" type="select" label="Perform amplicon extension?">
+                       			<option value="yes">Yes</option>
+               				<option value="no">No</option>
+               			</param>
+               			<param name="ext_frag" type="select" label="Perform fragment extension?">
+                      			<option value="yes">Yes</option>
+                      			<option value="no">No</option>
+               			</param>
+               			<param name="mismatch" min="0" max="100" value="20" type="float" label="Maximum percentage of allowed mismatches in fragment annealing sites?"/>
+               			<param name="alnLength" min="0" max="100" value="80" type="float" label="Minimum alignment percentage in fragment annealing sites?"/>
+               			<param name="end" min="0" value="5" type="integer" label="Length of oligonucleotide 3'end region sensitive to nucleotide mismatches that could compromise the stability of primer-template duplex and extension?"/>
+				<param name="bases" min="0" value="1" type="integer" label="Number of mismatches allowed in the chosen oligonucleotide 3' end region?" />
+			</when>
+		</conditional>
+
+	</inputs>
+
+	<outputs>
+		<data name="out_detail" format="tabular" label = "Detail output on ${on_string}" />
+		<data name="out_summary" format="tabular" label = "Summary output on ${on_string}" />
+		<data name="out_cluster" format="tabular" label = "Cluster output on ${on_string}" />
+	</outputs>
+
+	<stdio>
+		<exit_code range="0" level="warning"/>
+		<exit_code range="1:" level="fatal" />
+	</stdio>
+
+	<help>
+
+
+**Input fasta file?** Select a file from history in fasta format. Ensure file format is set to fasta or Galaxy will not allow to select the correct file. Ensure only IUPAC nucleotide characters are present. Ensure every genome or sequence identifier in your fasta file is unique.
+
+-----
+
+**Config file?** Select a file from history with primer pair, probe, and amplicon information. Ensure file format is set to tabular or Galaxy will not allow to select the correct file. Do not use Excel files but export them to tabular format first (by saving them as a "tab-delimited text file"). The first column should contain a unique string that identifies the method (avoid special characters). The second column should contain the sequence of the forward primer. The third column should contain the sequence of the reverse primer. The fourth column should contain the sequence of the probe. The fifth column should contain the sequence of the reference amplicon. All sequence information should consist solely out of IUPAC nucleotide characters and also not contain "U". All sequence information should strictly be present in 5' -> 3' direction (in practice, this means the reverse primer should be reverse complemented compared to the sequence of the reference amplicon).
+
+An Example:
+
++--------------+---------------------+----------------------+-------------------------------+--------------------------------------------+
+| Method name  | Forward primer      | Reverse primer       | Probe                         | Amplicon                                   |
++==============+=====================+======================+===============================+============================================+
+|Callahan_1_s  |GACACCACACCCTTTGGACAA|CACCTGGCTGTCACCTCCAT  |AGAGGGTGTTTAAAGAGAAAGTTGACACGCG|GACACCACACCCTTTGGACAACAG...GAGGTGACAGCCAGGTG|
++--------------+---------------------+----------------------+-------------------------------+--------------------------------------------+
+|Callahan_2_s  |CATGGCCCTKGTGGCG     |CCCCATCTYTTCAGTATCCCTG|TCCTTCGTTTCCTAACAATCC          |CATGGCCCTGGTGGCGTTCCTTCG...ATATTGAAGAGATGGGG|
++--------------+---------------------+----------------------+-------------------------------+--------------------------------------------+
+
+-----
+
+**Method to evaluate** As the name implies, this field should contain the name of the method to evaluate. Make sure that the name of your method corresponds with any of the names defined in your config file, and use exactly the same name (case-sensitive: capitalization should be respected). E.g. if your config file contains sequence information for the methods "Callahan_1_s", "Callahan_2_s", "Callahan_3_s", or "Callahan_4_s", any of those should be typed in this field (without the double quotes of course).
+
+-----
+
+**Set advanced options?** Click "Yes" to show advanced options that can be modified. Leave this option at "No" to run the tool with default advanced options (recommended for beginners). Advanced options (and their default values) are listed below.
+
+-----
+
+**Consider degenerate sequences?** Select whether degenerate sequences for the primers and probe should be considered. "No" means the sequence is used as is by BLAST with its degenerate IUPAC characters. In the example above, for "Callahan_2_s" for the reverse primer, the sequence "CCCCATCTYTTCAGTATCCCTG" will be blasted against the recovered amplicon. "Yes" means each possible sequence is automatically generated and blasted against the recovered amplicon. In the example above, for "Callahan_2_s" for the reverse primer, the sequences "CCCCATCTTTTCAGTATCCCTG" and "CCCCATCTCTTCAGTATCCCTG" will be blasted against the recovered amplicon. **The variant with the best score will be presented in the results.** Note that the character "U" will never be considered however. The time required for running increases ~linearly with the number of sequences that need to be blasted. Fragments with many degenerate IUPAC characters can hence explode the running time. On the other hand, the BLAST algorithm does not account for degenerate IUPAC characters. This means that many degenerate IUPAC characters will split up the longest possible word size for a hit that is possible. As the number of degenerate IUPAC characters increases, the longest possible word hit will hence typically decrease, which may lead to finding a random kmer someplace else in the amplicon so that the primer/probe is not correctly identified in the amplicon. Default value is "Yes".
+
+----
+
+**Perform amplicon extension?** Select "Yes" to perform automated amplicon extension, or "No" to skip this step. BLAST will never allow to introduce mismatches at the end of an alignment for obvious reasons. By allowing amplicon extension, such mismatches will be added to the alignment. An example: 
+
++------------------------------------------------------+-------------------------------------------+
+| Method amplicon                                      | AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA |                                             
++------------------------------------------------------+-------------------------------------------+
+| Genomic amplicon                                     | CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAC |
++------------------------------------------------------+-------------------------------------------+
+| Amplicon retrieved by BLAST                          | -AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA- |
++------------------------------------------------------+-------------------------------------------+
+| Amplicon returned with amplicon extension turned on  | CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAC |
++------------------------------------------------------+-------------------------------------------+
+| Amplicon returned with amplicon extension turned off |  AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA  |
++------------------------------------------------------+-------------------------------------------+
+
+Importantly, amplicon extension will never extend above the size of original query amplicon so it will never add bases if a full alignment is found. Extension works for both the 5' end, 3' end, or both if possible.
+Default value is "Yes".
+
+-----
+
+**Perform fragment extension?** Select "Yes" to perform automated fragment extension, or "No" to skip this step. Same principle as for amplicon extension but applied to both the forward and reverse primer, and the probe. An example based on the previous example for amplicon extension: 
+
++------------------------------------------------------------+-------------------------------------------+
+| Recovered amplicon                                         | CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAC |
++------------------------------------------------------------+-------------------------------------------+
+| Method forward primer                                      | AAAAA                                     |
++------------------------------------------------------------+-------------------------------------------+
+| Annealing part retrieved by BLAST                          | -AAAA                                     |
++------------------------------------------------------------+-------------------------------------------+
+| Annealing part returned with fragment extension turned on  | CAAAAA                                    |
++------------------------------------------------------------+-------------------------------------------+
+| Annealing part returned with fragment extension turned off |  AAAAA                                    |
++------------------------------------------------------------+-------------------------------------------+
+
+Similarly, fragment extension will never extend above the size of original query fragment so it will never add bases if a full alignment is found. Extension works for both the 5' end, 3' end, or both if possible. Note that the results of fragment extension interplay with those for amplicon extension. If in the above example, amplicon extension was turned off, only the amplicon "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA" would have been retrieved instead of "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAC". Turning fragment extension on, would hence only recover the sequence "AAAA" instead of "CAAAAA".
+Default value is "Yes".
+
+-----
+
+**Maximum percentage of allowed mismatches in fragment annealing sites?** As the name implies, maximum percentage of mismatches allowed in fragment-template annealing sites to be considered valid. Default value is 20%.
+
+-----
+
+**Minimum alignment percentage in fragment annealing sites?** As the name implies, minimum percentage of the alignment that should be recovered for the fragment-template annealing site. Default value is 80%.
+
+-----
+
+**Length of oligonucleotide 3'end region sensitive to nucleotide mismatches that could compromise the stability of primer-template duplex and extension?** As the name implies, length of the 3' end for primer-template annealing sites that is evaluated for containing mismatches. Note that this only applies to the forward and reverse primer, and not the probe. Default value is 5.
+
+-----
+
+**Number of mismatches allowed in the chosen oligonucleotide 3' end region?** As the name implies, number of mismatches that are allowed in the region selected by the previous option. Any higher number of mismatches will lead to the duplex being rejected. Default value is 1.
+
+----
+
+
+**Output files**
+
+- **Cluster output.** Contains the output of the clustering. The output has the following format:
+
++--------------+----------------+------------------+-------------------+
+| Method name  | Cluster number | Reference genome | Amplicon sequence |
++--------------+----------------+------------------+-------------------+
+
+The cluster number for each method is the same for all reference genomes that have the same amplicon sequence. The total number of clusters (per method) hence denotes how many different amplicon sequences were found in the input list of reference genomes.
+If the option "No clustering" was given, an output file will still be created with the content "No clustering performed".
+
+- **Summary output.** Contains a summary of the output. The output has the following format:
+
++------------------+--------------------------------+
+| Reference genome | Method works (0 = no; 1 = yes) |
++------------------+--------------------------------+
+
+The method is considered to be working if all three fragments (forward and reverse primer, and probe) passed all selection criteria (see below) for **at least** one of the methods specified under methods.
+
+- **Detail output.** Contains detailed output information. The format of the output is given in a header line in the file itself (it's too long to print here). This file can be used to investigate why some methods might not work for your reference sequences to allow for instance the introduction of degeneracies that overcome problematic regions. If you are however only interested in method performance, you can ignore this file and stick to the summary output file.
+
+Importantly, for the "amplicon code", the following numeric code applies:
+
++--------+---------------------------------------------------------------------------------------------------------------------------+
+| Number | Explanation                                                                                                               |
++========+===========================================================================================================================+
+|   1    | An amplicon sequence has been recovered by BLAST                                                                          |
++--------+---------------------------------------------------------------------------------------------------------------------------+
+|   0    | No amplicon sequence has been recovered by BLAST (i.e. not even a single BLAST hit)                                       |
++--------+---------------------------------------------------------------------------------------------------------------------------+
+|  -1    | An amplicon sequence has been recovered by BLAST, but it starts immediately at the first position of the genomic sequence |
++--------+---------------------------------------------------------------------------------------------------------------------------+
+|  -2    | An amplicon sequence has been recovered by BLAST, but it ends immediately at the last position of the genomic sequence    |
++--------+---------------------------------------------------------------------------------------------------------------------------+
+
+This numeric code can be used for investigative purposes. 0 means in essence not a single BLAST hit for the reference amplicon was found. 1, -1, and -2, indicate that a BLAST hit for the reference amplicon has been found. -1 and -2 indicate specific cases where this hit starts or ends however at either the start or end of the genomic reference, respectively. Such cases are often indicative of an incomplete genomic sequence, 
+
+Importantly for the columns 'Forward primer anneals?', 'Reverse primer anneals?', and 'Probe anneals?';the following numeric code applies:
+
++--------+------------------------------------------------------------------------------------------+
+| Number | Explanation                                                                              |
++========+==========================================================================================+
+|   1    | Fragment anneals properly (based on in silico selection criteria)                        |
++--------+------------------------------------------------------------------------------------------+
+|   0    | No blast hit for fragment sequence found                                                 |
++--------+------------------------------------------------------------------------------------------+
+|  -1    | Mismatch score too high                                                                  |
++--------+------------------------------------------------------------------------------------------+
+|  -2    | Alignment length too short                                                               |
++--------+------------------------------------------------------------------------------------------+
+|  -3    | Too many mismatches in 3' end of the primer-template duplex                              |
++--------+------------------------------------------------------------------------------------------+
+
+This numeric code can be used for investigative purposes to see how primers and probes can be improved. Note that the criteria are checked from top to bottom, meaning that if a code of -3 is attributed, it can hence also mean that (but is not necessarily so that) the mismatch score is too high and/or the alignment length is too short.
+
+-----
+
+**Last update** Thursday 30/06/2017. Maintained by the WIV-ISP Bioinformatics Platform. For all inquiries and questions for support, please mail to bioit@wiv-isp.be.
+
+	</help>
+
+</tool>
