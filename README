@@ -1,0 +1,198 @@
+# Usage
+
+perl screened.pl
+ 
+    -ref <input fasta file containing reference genomes>
+    -config <input file containing method information> 
+    -method <string that contains comma-separated list of method names to be evaluated>
+    -cluster <string denoting whether amplicons should be clustered: "no", "greedy" or "exhaustive">
+    -out_detail <name of output file containing detailed information>
+    -out_summary <name of output file containing summary information>
+    -out_cluster <name of output file containing cluster information>
+    -deg <string denoting whether degenerate fragments should be considered: "yes" or "no">
+    -ext_am <string denoting whether amplicons should be extende: "yes" or "no">
+    -ext_frag <string denoting whether fragments should be extende: "yes" or "no">
+
+# Version
+
+Current version is 1.0 (first 'stable release')
+SCREENED ('polymeraSe Chain Reaction Evaluation through largE-scale miNing of gEnomic Data') Copyright (C) 2017 Kevin Vanneste (Bioinformatics Platform, Scientific Institute of Public Health - Belgium)
+http://wiv-isp.be
+Contact: bioit@wiv-isp.be
+
+# Description
+
+Script that evaluates the usability of using a PCR "method" (consisting out of an amplicon and "fragments": forward and reverse primer to amplify the amplicon, and probe
+to detect the amplicon) for a large set of sequences (typically full reference genomes but can also be smaller sequences that are to be tested).
+ 
+For each PCR method to be evaluated, the script first searches for the method amplicon in the list of reference genomes using BLAST.
+The script currently assumes that the top hit is the correct one. Exhaustive testing has indicated this to be a reasonable assumption.
+If no hit is found, a statement "FALSE" is returned for the amplicon sequence and propagated throughout the script and output files.
+Even if a small sequence hit is found somewhere in the genome not corresponding to the method amplicon, downstream tests (see further) will ensure
+no false positives are propagated in the eventual output. If amplicon extension is used, the found amplicons will be extended in both the 5' and 3'
+direction if, and only if, the found amplicon in the reference genome is shorter than the method amplicon. 
+ 
+For each PCR method to be evaluated, the script then searches in these found amplicons whether the provided forward and reverse primer, plus the probe,
+for the method will successfully anneal.
+This is done by using BLASTN-SHORT tweaked specifically for these short fragment searches. If degenerate fragments should be considered, all possible
+variations are considered. It is assumed that the top hit is the correct one. Exhaustive testing has indicated this to be a reasonable assumption, especially
+if all degenerate fragments are considered.
+If fragment extension is used, the found forward and reverse primer, and the probe, will be extended in both the 5' end 3' direction if, and only if, either of those found fragments
+in the amplicon is shorter than the method fragments.
+Three selection criteria are then used to decide whether these top hits for each fragment will lead to 
+successful annealing (the fifth criterion is however not used anymore - it is preserved here for legacy reasons):
+1. The aligned part for each fragment cannot contain more than 20% mismatches. Mismatches are recalculated after BLAST to account for the redundancy of the
+IUPAC nucleotide characters because this is not natively supported by BLAST. If all degenerate fragments are considered, the latter will however not pose problems.
+2. The aligned part for each fragment should be at least 80% of the length of the total fragment.
+3. For the forward and reverse primers, there can be no mismatch in the last 5 bases at the 3' end.
+Only if the 3 fragments pass all these selection criteria, it is assumed that the PCR method works for the reference genome in question.
+ 
+When more than one method is tested, also referred to as method groups, a method group will be considered successful for a reference genome if at least
+one of the methods succeeds.
+ 
+Additionally, the script can also perform sequence clustering of all found amplicons for each PCR method. If performed, this can be done either
+greedy (requires USEARCH, see dependencies) or exhaustive (requires MUSCLE, see dependencies). Exhaustive clustering is guaranteed to find the optimal solution
+but can take very long for large sets of amplicons, whereas greedy clustering runs a lot faster and testing has indicated that the most optimal solution
+is also almost always found.
+
+# Command line options
+ 
+## -ref 'input fasta file containing reference genomes'
+ 
+A standard fasta file containing a list of reference genomes in nucleotide format (or large sequences to be evaluated otherwise).
+Ensure all sequence headers are unique.
+Also ensure that the nucleotide sequence only consists out of IUPAC nucleotide characters, excluding 'U'!
+ 
+## -config 'input file containing method information' 
+ 
+A tab-delimited config file containing all the required information for the PCR methods.
+Each line should contain the information for one method in the following manner: 
+     
+    The first column contains a string that identifies the method. Avoid special characters!
+    The second column contains the sequence of the forward primer. 
+    The third column contains the sequence of the reverse primer. 
+    The fourth column contains the sequence of the probe. 
+    The fifth column contains be the sequence of the amplicon.
+ 
+As for the reference genomes, the method information should only consist out of IUPAC nucleotide characters, excluding 'U'!
+IMPORTANT: for forward primer, reverse primer, probe, and amplicon; all sequence information should be given in 5'->3' direction.
+In practice, this means that the forward primer, amplicon, and probe, can be given as is but the reverse primer should be reverse complemented first.
+Each PCR method to be evaluated (i.e. the "-method"" argument) should be presented in this file. More methods can be present than are evaluated in any one given run.
+ 
+## -method 'string that contains comma-separated list of method names to be evaluated'
+ 
+A string that denotes which PCR methods constitute a method group to be evaluated. Method names should have the corresponding fragment plus amplicon information
+present in the config file (i.e. the "-config" argument). For a reference genome (i.e. "-fasta" argument), if any of the methods specified here is successful,
+the method group is considered to be successful.
+ 
+## -cluster 'string denoting whether amplicons should be clustered: "no", "greedy" or "exhaustive"'
+ 
+String that denotes the type of clustering:
+"no" for no clustering (an empty output file will still be created).
+"greedy" for clustering based on usearch. Usearch should hence be installed and available in the environment (see dependencies). 
+Greedy clustering speeds up the computation considerably, but is not guaranteed to deliver an optimal solution. Testing has however indicated
+the optimal solution is almost always found in practice.
+"exhaustive" for exhaustive clustering. Does an all-versus-all global alignment of found amplicons based on muscle. Muscle should hence be installed and
+available in the environment (see dependencies). Exhaustive clustering can take very long for large sets of amplicons, but is guaranteed to deliver an optimal solution.
+ 
+## -out_detail 'name of output file containing detailed information'
+ 
+Output file name that contains detailed information for each method (file contains a header line that explains the contents of this file).
+ 
+## -out_summary 'name of output file containing summary information'
+ 
+Output file name that contains summary information for the method (pair) to be evaluated
+(file contains a header line that explains the contents of this file).
+ 
+## -out_cluster 'name of output file containing cluster information'
+ 
+Output file name that contains clustered amplicon information (file contains a header line that explains the contents of this file).
+This file will also be created but be empty if no clustering was performed.
+ 
+## -deg 'string denoting whether degenerate fragments should be considered: "yes" or "no"'
+ 
+String that denotes whether all degenerate fragments should be considered.
+"no" means the fragment will be used as is (i.e. forward primer, reverse primer, and probe). "yes" means that all possible versions of the degenerate fragments
+will be blasted and only the best one will be reported.
+Not considering degenerate fragments can be dangerous if your fragments contain many degenerate IUPAC-characters, as these are considered as mismatches by BLAST.
+Because these characters break up the longest possible word size recognized in your fragment, it may be that a random kmer is found someplace else in the amplicon.
+Considering degenerate fragments will prevent this but will also increase running time.
+ 
+## -ext_am 'string denoting whether amplicons should be extended: "yes" or "no"'
+ 
+Stringr that denotes whether amplicons can be extended at either the 5' and/or 3' end. "no" means no extension will be performed.
+If set to "yes", found amplicons in the reference genome will be extended if, and only if, the found amplicon is shorter than the PCR method
+amplicon. This can be required in cases where either the last or penultimate base of your amplicon is a mismatch. The BLAST algorithm will not consider this as part
+of the alignment, and it will not be reported although manual inspection may still reveal it should be included. It is always advised to run the program first
+with -ext_am set to "no"" to see if this may be a problem in your dataset first.
+ 
+## -ext_frag 'string denoting whether fragments should be extended: "yes" or "no""'
+ 
+String that denotes whether fragments (all 3: forward and reverse primer, and the probe) can be extended at either the 5' and/or 3' end. "no" means no extension will be performed.
+If set to "yes", found fragments in the amplicon will be extended if, and only if, the found fragment is shorter than the PCR method
+fragment. This can be required in cases where either the last or penultimate base of your fragment is a mismatch. The BLAST algorithm will not consider this as part
+of the alignment, and it will not be reported although manual inspection may still reveal it should be included. It is always advised to run the program first
+with -ext_frag set to 0 to see if this may be a problem in your dataset first.
+ 
+## -mismatch 'maximum percentage of allowed mismatches'
+ 
+Floating point number between 0 and 100 that gives the maximum percentage of allowed mismatches in annealing sites. This is applied to all three fragments (forward primer, reverse primer and probe).
+ 
+## -length 'minimum percentage of alignment length'
+ 
+Floating point number between 0 and 100 that gives the minimum percentage of the alignment length in annealing sites. This is applied to all three fragments (forward primer, reverse primer and probe).
+ 
+## -end 'length of bases at 3' end that cannot have a mismatch'
+ 
+Integer betweeen 0 and the total fragment length of the smallest method fragment that should be considered to check for mimmatches at the 3' end for the forward and reverse primer. 
+This does NOT apply to the probe.
+ 
+## -bases 'maximum number of mismathces at 3' end'
+ 
+Integer between 0 and the total fragment length of the smallest method fragment that denotes the number of mismatches which is considered to prevent elongation for the length defined by the '-end' parameter.
+This does NOT apply to the probe.
+ 
+# Dependencies
+
+## Perl
+
+Perl should be available in the environment. Version v5.18.2 is tested and supported. Higher versions should also work in theory.
+
+## BLAST
+
+BLAST should always be available in the environment. Version 2.2.30 is tested and supported. All versions of the new BLAST ("BLAST+")
+should work in theory.
+
+## Usearch
+
+Usearch should be available in the environment if greedy clustering is performed. Rename the binary to 'usearch' as the default binary name typically also
+contains version information etc.
+Version 8.1.1861 is tested and supported. Higher versions should also work in theory.
+
+## Muscle
+
+Muscle should be available in the environment if exhaustive clustering is performed. Rename the binary to 'muscle' (although this is the default binary name).
+Version 3.8.31 is tested and supported.
+
+# Bug reports
+
+No known bugs at the moment.
+Please send all bug reports and/or feature requests to bioit@wiv-isp.be.
+
+# Comments
+
+This program started out as a small idea/project to quickly test whether it would be possible to use BLAST to search in large sets of reference genomes whether 
+a PCR method works through blasting the PCR method information (amplicon and fragments: forward primer, reverse primer, and probe) against the reference genome sequence.
+It turned out to work remarkably well and successive layers of complexity were added (support for clustering, criteria checks, amplicon extension, fragment extension...)
+to the extent a fully working program/paper was created. Because there was not a clear-cut design at the beginning of the project, this history of adding successive layers 
+of complexity is also present within the code unfortunately. Although code refactoring has been attempted to make the design more straightforward and clear, some
+legacy artifacts are still present. Time (and popularity of the tool...) permitting, a novel version might be created in Python communicating directly with an underlying
+SQL database to increase flow.
+
+# Citation
+
+People using this program for their work are asked to cite the corresponding publication. Submission of the publication is currently in progress.
+
+# Tutorial
+
+A tutorial is currently being written that explains how to use SCREEND in Galaxy. This tutorial currently exists as a supplementary to the submission of the publication (in progress).
