@@ -19,7 +19,7 @@ perl screened.pl
 
 Current version is 1.0 (first 'stable release')
 SCREENED ('polymeraSe Chain Reaction Evaluation through largE-scale miNing of gEnomic Data') Copyright (C) 2017 Kevin Vanneste (Bioinformatics Platform, Scientific Institute of Public Health - Belgium)
-http://wiv-isp.be
+Website: www.wiv-isp.be
 Contact: bioit@wiv-isp.be
 
 =head1 DESCRIPTION
