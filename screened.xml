@@ -21,7 +21,10 @@
         	-mismatch $advanced_options.mismatch
         	-length $advanced_options.alnLength
         	-end $advanced_options.end
-		-bases $advanced_options.bases
+		## Had to change the underlying a little bit because the program takes the number of bases as the maximum value whereas the Galaxy wrapper presents it as the maximum number of mismatches at which elongation will still take place
+		#set $adapted = int($advanced_options.bases) + 1
+		-bases $adapted
+		##-bases $advanced_options.bases
 	#else:
 		-cluster no
 		-deg yes
@@ -30,7 +33,7 @@
 		-mismatch 20
 		-length 80
 		-end 5	
-		-bases 1
+		-bases 2
 	#end if
 
 	</command>
